@@ -7,31 +7,38 @@ app.use(express.json());
 app.use(cors());
 
 const API_KEY = process.env.CALDIS_API_KEY;
+const BASE_URL = 'https://caldis.pl/api'; // może być inny – łatwo zmienimy
 
 // TEST
 app.get('/', (req, res) => {
   res.send('Backend działa 🚀');
 });
 
-// Jachty
-app.get('/api/yachts', async (req, res) => {
-  const response = await fetch('https://caldis.pl/api/yachts', {
-    headers: { Authorization: 'Bearer ' + API_KEY }
-  });
-  const data = await response.json();
-  res.json(data);
-});
+// 🔹 uniwersalny proxy endpoint (NAJWAŻNIEJSZE)
+app.get('/api/proxy', async (req, res) => {
+  const { endpoint } = req.query;
 
-// Dostępność
-app.get('/api/availability', async (req, res) => {
-  const { yacht_id } = req.query;
+  try {
+    const response = await fetch(`${BASE_URL}/${endpoint}`, {
+      headers: {
+        Authorization: `Bearer ${API_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
 
-  const response = await fetch(`https://caldis.pl/api/availability?yacht_id=${yacht_id}`, {
-    headers: { Authorization: 'Bearer ' + API_KEY }
-  });
+    const text = await response.text();
 
-  const data = await response.json();
-  res.json(data);
+    // jeśli JSON → zwróć JSON
+    try {
+      const json = JSON.parse(text);
+      res.json(json);
+    } catch {
+      res.send(text); // fallback
+    }
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.listen(10000, () => console.log('Server działa'));
